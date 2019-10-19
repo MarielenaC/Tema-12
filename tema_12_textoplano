@@ -1,0 +1,62 @@
+library(psych)
+library(ggplot2)
+datosCrudos <- read.csv("~/Downloads/nh3_2001_2014_vitd_mortality.csv")
+#Filtrar los registros que tienen NA en el campo que define si están muertos.
+datosCrudos<-datosCrudos[!is.na(datosCrudos$dead),]
+#Cuántos están vivos y cuantos ya fallecieron.
+deadAlive<-
+c(nrow(datosCrudos[datosCrudos$dead==TRUE,]),nrow(datosCrudos[datosCrudos$dead==FALSE,]))
+png(filename = "deadVsAlive.png",pointsize = 18, res = NA)
+barplot(deadAlive,names.arg = c("Deceased", "Alive"),ylim=c(0,50000),col =
+c("cornflowerblue", "orchid3"),ylab = "Number of pacients")
+dev.off()
+#Cuantas muertes han ocurrido por raza.
+ggplot(datosCrudos,aes(x=race1,y=dead))+
+geom_bar(stat = "identity", fill="steelblue")+
+xlab("Race")+
+ylab("Number of dead pacients")
+ggsave("Race_deads.png",device = "png",dpi = 200,width = 4.39)
+#Filtrar los registros para quedarnos solo con los pacientes Mexicanos que han
+fallecido.
+dataDead<-datosCrudos[datosCrudos$dead==TRUE & datosCrudos$race1=="Mexican",]
+#Extraemos solo los que nacieron en México.
+dead_mex<-dataDead[dataDead$usborn=="0",]
+#Extraemos solo los que nacieron en USA.
+dead_US<-dataDead[dataDead$usborn=="1",]
+#Creamos un nuevo factor con los valores de intervalos de edades.
+dataDead$AgeInt<-factor(0,levels=c("0-20","21-35","36-60","61-90"))
+#Asignamos a cada paciente el intervalo de edad correspondiente.
+dataDead[dataDead$age>0 & dataDead$age<21,]$AgeInt<-"0-20"
+dataDead[dataDead$age>20 & dataDead$age<36,]$AgeInt<-"21-35"
+dataDead[dataDead$age>35 & dataDead$age<61,]$AgeInt<-"36-60"
+dataDead[dataDead$age>60,]$AgeInt<-"61-90"
+#Creamos una nueva columna factor para el género.
+dataDead$Gender<-factor(dataDead$sex,levels=c("Male","Female"))
+#Asignamos el género correspondiente a cada paciente.
+dataDead[dataDead$sex==1,]$Gender<-"Male"
+dataDead[dataDead$sex==2,]$Gender<-"Female"
+#Graficamos la cantidad de pacientes muertos por cada intervalo de edad y separamos
+por género.
+ggplot(dataDead,aes(x=AgeInt,y=dead,fill=Gender))+
+geom_bar(stat = "identity")+
+xlab("Age interval")+
+ylab("Number of dead pacients")
+ggsave("AgeInterval_gender.png",device = "png",dpi = 200,width = 4.39)
+#Creamos una nueva columna factor para el lugar de nacimiento.
+dataDead$Birthplace<-factor(dataDead$usborn,levels=c("USA","México"))
+#asignamos el lugar de nacimiento correspondiente a cada paciente.
+dataDead[dataDead$usborn==TRUE,]$Birthplace<-"USA"
+dataDead[dataDead$usborn==FALSE,]$Birthplace<-"México"
+#recortamos los nombres de la causa de muerte (ucod_leading)para eliminar los
+códigos y quedarnos solo con el texto.
+dataDead$CauseOfDeath<-gsub("\\s*\\([^\\)]+\\)",'',dataDead$ucod_leading)
+dataDead[dataDead$CauseOfDeath=="Ineligible, under age 18, assumed alive, or no
+cause of death data",]$CauseOfDeath<-"Ineligible or no cause of death data"ylab("Number of dead pacients")
+ggsave("DeathCause_gender.png",device = "png",dpi = 200,width = 8)
+#Graficamos la causa de muerte por lugar de nacimiento.
+ggplot(dataDead,aes(x=CauseOfDeath,y=dead,fill=Birthplace))+
+geom_bar(stat="identity")+
+coord_flip()+
+xlab("Cause of death")+
+ylab("Number of dead pacients")
+ggsave("DeathCause_birthplace.png",device = "png",dpi = 200,width = 8)
